@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Normal Map Generator — LaunchTower</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel2: #1c2330;
+    --border: #2d3748;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --danger: #f85149;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  header h1 span { color: var(--accent); }
+  header p {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  main {
+    flex: 1;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  @media (max-width: 820px) {
+    main { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .control { margin-bottom: 16px; }
+  .control label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .control label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 4px;
+    cursor: pointer;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+  }
+  .toggle-row input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover { background: #232c3b; border-color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    color: #0d1117;
+    font-weight: 600;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: #79b8ff; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 16px;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(88,166,255,0.06);
+  }
+  .dropzone .icon { font-size: 26px; margin-bottom: 8px; }
+  .preview-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 640px) {
+    .preview-wrap { grid-template-columns: 1fr; }
+  }
+  .preview-box {
+    background: #0a0e14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .preview-box .tag {
+    position: absolute;
+    top: 8px; left: 8px;
+    background: rgba(13,17,23,0.8);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--muted);
+    z-index: 2;
+  }
+  .preview-box canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 420px;
+    image-rendering: pixelated;
+  }
+  .placeholder {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 20px;
+  }
+  .light-controls {
+    margin-top: 14px;
+    padding: 12px;
+    background: var(--panel2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .light-controls .lc-title {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .light-controls .lc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .light-controls .lc-row label { width: 60px; color: var(--muted); flex-shrink: 0; }
+  .light-controls .lc-row input[type="range"] { flex: 1; }
+  .light-controls .lc-row .val { width: 36px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .status {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 16px;
+  }
+  .status.ok { color: var(--accent2); }
+  .status.err { color: var(--danger); }
+  footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  .disclaimer {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Normal Map <span>Generator</span></h1>
+  <p>Turn any sprite or grayscale heightmap into a tangent-space normal map — right in your browser.</p>
+</header>
+
+<main>
+  <div class="panel">
+    <h2>Source</h2>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">🖼️</div>
+      <div>Drop an image here or click to browse</div>
+      <div style="margin-top:6px;font-size:11px">PNG, JPG, GIF, WebP</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+
+    <h2 style="margin-top:20px">Settings</h2>
+    <div class="control">
+      <label>Strength <span class="val" id="strengthVal">2.0</span></label>
+      <input type="range" id="strength" min="0.1" max="10" step="0.1" value="2">
+    </div>
+    <div class="control">
+      <label>Blur radius <span class="val" id="blurVal">0</span></label>
+      <input type="range" id="blur" min="0" max="8" step="1" value="0">
+    </div>
+    <div class="toggle-row">
+      <span>Invert Y (OpenGL style)</span>
+      <input type="checkbox" id="invertY">
+    </div>
+    <div class="toggle-row">
+      <span>Wrap edges (tileable)</span>
+      <input type="checkbox" id="wrap" checked>
+    </div>
+
+    <h2 style="margin-top:20px">Output</h2>
+    <button class="btn primary" id="downloadBtn" disabled>⬇ Download PNG</button>
+    <div class="status" id="status"></div>
+    <div class="disclaimer">
+      Everything runs locally in your browser. No image ever leaves your device.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Preview</h2>
+    <div class="preview-wrap">
+      <div class="preview-box">
+        <div class="tag">Source</div>
+        <canvas id="srcCanvas"></canvas>
+        <div class="placeholder" id="srcPlaceholder">Load an image to begin</div>
+      </div>
+      <div class="preview-box">
+        <div class="tag">Normal Map (lit)</div>
+        <canvas id="nmCanvas"></canvas>
+        <div class="placeholder" id="nmPlaceholder">Normal map appears here</div>
+      </div>
+    </div>
+
+    <div class="light-controls">
+      <div class="lc-title">Preview Light</div>
+      <div class="lc-row">
+        <label>Azimuth</label>
+        <input type="range" id="lightAz" min="0" max="360" step="1" value="315">
+        <span class="val" id="lightAzVal">315°</span>
+      </div>
+      <div class="lc-row">
+        <label>Elevation</label>
+        <input type="range" id="lightEl" min="5" max="90" step="1" value="45">
+        <span class="val" id="lightElVal">45°</span>
+      </div>
+      <div class="lc-row">
+        <label>Intensity</label>
+        <input type="range" id="lightInt" min="0.2" max="2" step="0.05" value="1">
+        <span class="val" id="lightIntVal">1.0</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built by <a href="https://pennypenguinapp-beep.github.io/" target="_blank" rel="noopener">LaunchTower</a> — free pixel-art &amp; game-dev tools.
+</footer>
+
+<script>
+(function() {
+  "use strict";
+
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const srcCanvas = document.getElementById("srcCanvas");
+  const nmCanvas = document.getElementById("nmCanvas");
+  const srcPlaceholder = document.getElementById("srcPlaceholder");
+  const nmPlaceholder = document.getElementById("nmPlaceholder");
+  const downloadBtn = document.getElementById("downloadBtn");
+  const statusEl = document.getElementById("status");
+
+  const strengthEl = document.getElementById("strength");
+  const blurEl = document.getElementById("blur");
+  const invertYEl = document.getElementById("invertY");
+  const wrapEl = document.getElementById("wrap");
+  const strengthVal = document.getElementById("strengthVal");
+  const blurVal = document.getElementById("blurVal");
+  const lightAz = document.getElementById("lightAz");
+  const lightEl_ = document.getElementById("lightEl");
+  const lightInt = document.getElementById("lightInt");
+  const lightAzVal = document.getElementById("lightAzVal");
+  const lightElVal = document.getElementById("lightElVal");
+  const lightIntVal = document.getElementById("lightIntVal");
+
+  let srcImage = null;
+  let srcW = 0, srcH = 0;
+  let heightData = null; // Float32Array of luminance 0..1, row-major
+  let normalData = null; // Uint8ClampedArray RGBA, row-major
+
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg || "";
+    statusEl.className = "status" + (cls ? " " + cls : "");
+  }
+
+  function loadFile(file) {
+    if (!file || !file.type || !file.type.startsWith("image/")) {
+      setStatus("Please choose an image file.", "err");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      srcImage = img;
+      srcW = img.naturalWidth;
+      srcH = img.naturalHeight;
+      srcCanvas.width = srcW;
+      srcCanvas.height = srcH;
+      const sctx = srcCanvas.getContext("2d", { willReadFrequently: true });
+      sctx.drawImage(img, 0, 0);
+      srcPlaceholder.style.display = "none";
+      nmPlaceholder.style.display = "none";
+      nmCanvas.width = srcW;
+      nmCanvas.height = srcH;
+      downloadBtn.disabled = false;
+      setStatus("Loaded " + srcW + "×" + srcH + " — generating…", "ok");
+      computeHeight();
+      regenerate();
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      setStatus("Could not decode that image.", "err");
+    };
+    img.src = url;
+  }
+
+  function computeHeight() {
+    const ctx = srcCanvas.getContext("2d", { willReadFrequently: true });
+    const data = ctx.getImageData(0, 0, srcW, srcH).data;
+    heightData = new Float32Array(srcW * srcH);
+    for (let i = 0; i < srcW * srcH; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      // Rec. 709 luminance
+      heightData[i] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    }
+  }
+
+  function sampleHeight(x, y) {
+    if (wrapEl.checked) {
+      x = ((x % srcW) + srcW) % srcW;
+      y = ((y % srcH) + srcH) % srcH;
+    } else {
+      x = Math.max(0, Math.min(srcW - 1, x));
+      y = Math.max(0, Math.min(srcH - 1, y));
+    }
+    return heightData[y * srcW + x];
+  }
+
+  function boxBlur(arr, radius) {
+    if (radius <= 0) return arr;
+    const w = srcW, h = srcH;
+    const tmp = new Float32Array(w * h);
+    const out = new Float32Array(w * h);
+    // horizontal
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0, count = 0;
+        for (let dx = -radius; dx <= radius; dx++) {
+          let xx = x + dx;
+          if (wrapEl.checked) xx = ((xx % w) + w) % w;
+          else { if (xx < 0 || xx >= w) continue; }
+          sum += arr[y * w + xx];
+          count++;
+        }
+        tmp[y * w + x] = sum / count;
+      }
+    }
+    // vertical
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0, count = 0;
+        for (let dy = -radius; dy <= radius; dy++) {
+          let yy = y + dy;
+          if (wrapEl.checked) yy = ((yy % h) + h) % h;
+          else { if (yy < 0 || yy >= h) continue; }
+          sum += tmp[yy * w + x];
+          count++;
+        }
+        out[y * w + x] = sum / count;
+      }
+    }
+    return out;
+  }
+
+  function generateNormals() {
+    const strength = parseFloat(strengthEl.value);
+    const blurR = parseInt(blurEl.value, 10);
+    const invY = invertYEl.checked;
+    const h = boxBlur(heightData, blurR);
+    const w = srcW, hh = srcH;
+    const out = new Uint8ClampedArray(w * hh * 4);
+    for (let y = 0; y < hh; y++) {
+      for (let x = 0; x < w; x++) {
+        const hl = sampleHeight(x - 1, y);
+        const hr = sampleHeight(x + 1, y);
+        const hu = sampleHeight(x, y - 1);
+        const hd = sampleHeight(x, y + 1);
+        let nx = (hl - hr) * strength;
+        let ny = (hu - hd) * strength;
+        let nz = 1.0;
+        if (invY) ny = -ny;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        nx /= len; ny /= len; nz /= len;
+        const idx = (y * w + x) * 4;
+        out[idx]     = Math.round((nx * 0.5 + 0.5) * 255);
+        out[idx + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+        out[idx + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+        out[idx + 3] = 255;
+      }
+    }
+    return out;
+  }
+
+  function shadeNormals() {
+    const az = parseFloat(lightAz.value) * Math.PI / 180;
+    const el = parseFloat(lightEl_.value) * Math.PI / 180;
+    const intensity = parseFloat(lightInt.value);
+    const lx = Math.cos(el) * Math.cos(az);
+    const ly = Math.sin(el);
+    const lz = Math.cos(el) * Math.sin(az);
+    const ll = Math.sqrt(lx*lx + ly*ly + lz*lz) || 1;
+    const Lx = lx/ll, Ly = ly/ll, Lz = lz/ll;
+    const w = srcW, h = srcH;
+    const out = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < w * h; i++) {
+      const nx = (normalData[i*4] / 255) * 2 - 1;
+      const ny = (normalData[i*4+1] / 255) * 2 - 1;
+      const nz = (normalData[i*4+2] / 255) * 2 - 1;
+      let d = nx*Lx + ny*Ly + nz*Lz;
+      d = Math.max(0, d) * intensity;
+      const r = Math.min(255, (normalData[i*4]   ) * d + 20);
+      const g = Math.min(255, (normalData[i*4+1]) * d + 20);
+      const b = Math.min(255, (normalData[i*4+2]) * d + 20);
+      out[i*4] = r; out[i*4+1] = g; out[i*4+2] = b; out[i*4+3] = 255;
+    }
+    return out;
+  }
+
+  function regenerate() {
+    if (!srcImage) return;
+    normalData = generateNormals();
+    const ctx = nmCanvas.getContext("2d");
+    const shaded = shadeNormals();
+    ctx.putImageData(new ImageData(shaded, srcW, srcH), 0, 0);
+  }
+
+  function download() {
+    if (!normalData) return;
+    const off = document.createElement("canvas");
+    off.width = srcW; off.height = srcH;
+    off.getContext("2d").putImageData(new ImageData(normalData, srcW, srcH), 0, 0);
+    off.toBlob(function(blob) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "normal_map_" + srcW + "x" + srcH + ".png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      setStatus("Downloaded " + srcW + "×" + srcH + " PNG.", "ok");
+    }, "image/png");
+  }
+
+  // Events
+  dropzone.addEventListener("click", function() { fileInput.click(); });
+  dropzone.addEventListener("dragover", function(e) {
+    e.preventDefault(); e.stopPropagation();
+    dropzone.classList.add("dragover");
+  });
+  dropzone.addEventListener("dragleave", function(e) {
+    e.preventDefault(); e.stopPropagation();
+    dropzone.classList.remove("dragover");
+  });
+  dropzone.addEventListener("drop", function(e) {
+    e.preventDefault(); e.stopPropagation();
+    dropzone.classList.remove("dragover");
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) loadFile(files[0]);
+  });
+  fileInput.addEventListener("change", function() {
+    if (fileInput.files && fileInput.files.length) loadFile(fileInput.files[0]);
+  });
+
+  strengthEl.addEventListener("input", function() {
+    strengthVal.textContent = parseFloat(strengthEl.value).toFixed(1);
+    regenerate();
+  });
+  blurEl.addEventListener("input", function() {
+    blurVal.textContent = blurEl.value;
+    regenerate();
+  });
+  invertYEl.addEventListener("change", regenerate);
+  wrapEl.addEventListener("change", regenerate);
+  lightAz.addEventListener("input", function() {
+    lightAzVal.textContent = lightAz.value + "°";
+    regenerate();
+  });
+  lightEl_.addEventListener("input", function() {
+    lightElVal.textContent = lightEl_.value + "°";
+    regenerate();
+  });
+  lightInt.addEventListener("input", function() {
+    lightIntVal.textContent = parseFloat(lightInt.value).toFixed(2);
+    regenerate();
+  });
+  downloadBtn.addEventListener("click", download);
+
+  // Paste support
+  document.addEventListener("paste", function(e) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.startsWith("image/")) {
+        const blob = items[i].getAsFile();
+        if (blob) { loadFile(blob); return; }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
