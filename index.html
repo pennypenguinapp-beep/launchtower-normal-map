@@ -240,6 +240,7 @@
       <div style="margin-top:6px;font-size:11px">PNG, JPG, GIF, WebP</div>
     </div>
     <input type="file" id="fileInput" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+    <button class="btn" id="loadExample" style="margin-bottom:16px">✨ Load example</button>
 
     <h2 style="margin-top:20px">Settings</h2>
     <div class="control">
@@ -373,6 +374,43 @@
       setStatus("Could not decode that image.", "err");
     };
     img.src = url;
+  }
+
+  function loadExample() {
+    const W = 64, H = 32;
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    const tiles = [
+      { bg: "#2b6cb0", fg: "#bee3f8", shape: "circle" },
+      { bg: "#276749", fg: "#c6f6d5", shape: "square" },
+      { bg: "#744210", fg: "#fefcbf", shape: "triangle" },
+      { bg: "#553c9a", fg: "#e9d8fd", shape: "diamond" },
+      { bg: "#9b2c2c", fg: "#fed7d7", shape: "cross" },
+      { bg: "#2c5282", fg: "#ebf8ff", shape: "ring" },
+      { bg: "#234e52", fg: "#e6fffa", shape: "zigzag" },
+      { bg: "#702459", fg: "#faf5ff", shape: "dots" }
+    ];
+    for (let ty = 0; ty < H / 16; ty++) {
+      for (let tx = 0; tx < W / 16; tx++) {
+        const t = tiles[(tx + ty * 3) % tiles.length];
+        const ox = tx * 16, oy = ty * 16;
+        x.fillStyle = t.bg; x.fillRect(ox, oy, 16, 16);
+        x.fillStyle = t.fg;
+        if (t.shape === "circle") x.fillRect(ox + 5, oy + 5, 6, 6);
+        else if (t.shape === "square") { x.fillRect(ox + 4, oy + 4, 8, 8); x.fillStyle = t.bg; x.fillRect(ox + 6, oy + 6, 4, 4); }
+        else if (t.shape === "triangle") { x.fillRect(ox + 7, oy + 4, 2, 2); x.fillRect(ox + 5, oy + 6, 6, 2); x.fillRect(ox + 3, oy + 8, 10, 2); x.fillRect(ox + 1, oy + 10, 14, 2); }
+        else if (t.shape === "diamond") { x.fillRect(ox + 7, oy + 3, 2, 2); x.fillRect(ox + 5, oy + 5, 6, 2); x.fillRect(ox + 3, oy + 7, 10, 2); x.fillRect(ox + 5, oy + 9, 6, 2); x.fillRect(ox + 7, oy + 11, 2, 2); }
+        else if (t.shape === "cross") { x.fillRect(ox + 6, oy + 3, 4, 10); x.fillRect(ox + 3, oy + 6, 10, 4); }
+        else if (t.shape === "ring") { x.fillRect(ox + 4, oy + 4, 8, 8); x.fillStyle = t.bg; x.fillRect(ox + 6, oy + 6, 4, 4); }
+        else if (t.shape === "zigzag") { x.fillRect(ox + 1, oy + 4, 3, 2); x.fillRect(ox + 4, oy + 6, 3, 2); x.fillRect(ox + 7, oy + 8, 3, 2); x.fillRect(ox + 10, oy + 10, 3, 2); }
+        else if (t.shape === "dots") { x.fillRect(ox + 3, oy + 3, 2, 2); x.fillRect(ox + 11, oy + 3, 2, 2); x.fillRect(ox + 3, oy + 11, 2, 2); x.fillRect(ox + 11, oy + 11, 2, 2); x.fillRect(ox + 7, oy + 7, 2, 2); }
+      }
+    }
+    c.toBlob(function(blob) {
+      if (!blob) { setStatus("Could not build example.", "err"); return; }
+      loadFile(new File([blob], "example.png", { type: "image/png" }));
+    }, "image/png");
   }
 
   function computeHeight() {
@@ -555,6 +593,7 @@
     regenerate();
   });
   downloadBtn.addEventListener("click", download);
+  document.getElementById("loadExample").addEventListener("click", loadExample);
 
   // Paste support
   document.addEventListener("paste", function(e) {
